@@ -98,7 +98,7 @@ export function MeetScreen({ hosted, onNext }: { hosted: boolean; onNext: () => 
   return (
     <div className="flex min-h-full w-full flex-col items-center px-4 text-center">
       <div className="min-h-4 grow-[1.34]" />
-      <h1 id="welcome-title" className="text-[22px] font-medium leading-[26px] tracking-[-0.012em] text-ink">{t("onboarding.meet.title", { app: brand().name })}</h1>
+      <h1 id="welcome-title" className="text-[28px] font-light leading-[34px] tracking-[-0.015em] text-ink">{t("onboarding.meet.title", { app: brand().name })}</h1>
       <div className="min-h-4 grow" />
       <span className="flex shrink-0" style={{ width: MASCOT_SIZE, height: MASCOT_SIZE }}>
         {logo ? (

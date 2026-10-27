@@ -9,6 +9,7 @@ import { detectSetupWithin, localSetupImport, setupImportApi } from "@/lib/setup
 import type { LocaleKey } from "@/locales";
 import { api, useStore, type Bot, type InstanceInfo, type Message } from "@/state/store";
 import { BotAvatar } from "./Avatar";
+import { joinedCorners, SIMPLE_BOT_BUBBLE, SIMPLE_BUBBLE_MAX } from "./chat-bubble";
 import { loadAppCards } from "./bot-settings/useBotApps";
 import { engineReady } from "./EngineLibrary";
 import { HelperSetup } from "./HelperSetup";
@@ -19,10 +20,8 @@ export const HELPER_ASK_KEYS: readonly LocaleKey[] = [
   "helperIntro.ask.overview", "helperIntro.ask.inbox", "helperIntro.ask.routine", "helperIntro.ask.howto",
 ];
 
-/** The bubble a bot's own words get in the chat: Simple's calmer one, or Advanced's. */
-const BUBBLE = "w-fit max-w-[min(var(--chat-bubble-max),var(--chat-bubble-pct))] bg-card text-ink";
-const SIMPLE_BUBBLE = "rounded-[18px] px-3 py-[7px] text-[14px] leading-[22px]";
-const ADVANCED_BUBBLE = "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed";
+/** Advanced mode's bot bubble; Simple's is the chat's own (chat-bubble.ts). */
+const ADVANCED_BUBBLE = "max-w-[min(var(--chat-bubble-max),var(--chat-bubble-pct))] rounded-2xl bg-card px-4 py-2.5 text-[15px] leading-relaxed text-ink";
 /** How long each bubble is "typed" before it arrives, as a first run lands in the chat. */
 export const ARRIVAL_MS: readonly number[] = [350, 800, 900, 1_500];
 const MAX_APP_NAMES = 3;
@@ -155,9 +154,18 @@ export function HelperIntro({ botId, threadId, message, answered }: { botId: str
   const visible = bubbles.slice(0, found.settled ? shown : Math.min(shown, lines.length));
   const ask = (key: LocaleKey) => dispatch({ type: "answerCard", botId, threadId, messageId: message.id, answer: t(key) });
   return (
-    <div data-helper-intro={message.id} className="flex w-full flex-col items-start gap-1.5">
+    <div data-helper-intro={message.id} className={cn("flex w-full flex-col items-start", advanced ? "gap-1.5" : "gap-1")}>
       {visible.map((text, index) => (
-        <div key={index} data-chat-bubble="" data-helper-line={index} className={cn(BUBBLE, advanced ? ADVANCED_BUBBLE : SIMPLE_BUBBLE, staged && "animate-msg-in")}>{text}</div>
+        <div
+          key={index}
+          data-chat-bubble={advanced ? "" : "simple"}
+          data-helper-line={index}
+          className={cn("w-fit", advanced ? ADVANCED_BUBBLE
+            : cn(SIMPLE_BUBBLE_MAX, SIMPLE_BOT_BUBBLE, joinedCorners("start", { above: index > 0, below: index < visible.length - 1 })),
+          staged && "animate-msg-in")}
+        >
+          {text}
+        </div>
       ))}
       {typing && bot && (
         <div role="status" data-helper-typing="" className="flex items-center gap-2 py-0.5">

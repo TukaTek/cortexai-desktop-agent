@@ -25,6 +25,7 @@ vi.mock("@/lib/setup-import", () => ({
 }));
 const { ARRIVAL_MS, HelperIntro, introLines, lookAroundReport } = await import("./HelperIntro");
 const { setupAction } = await import("./HelperSetup");
+const { SIMPLE_BOT_BUBBLE } = await import("./chat-bubble");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const claude = (ready: boolean): InstanceInfo => ({ instanceId: "claude", driverKind: "claudeAgent", displayName: "Claude",
@@ -100,6 +101,9 @@ describe("in the chat", () => {
       "I looked around. Claude is connected, and I can use Gmail. Or just hand me whatever's on your plate today.",
     ]);
     expect(steps()).toEqual(["bots", "phone", "cloud"]);
+    const first = host.querySelector<HTMLElement>('[data-helper-line="0"]')!;
+    expect(first.dataset.chatBubble, "the chat's own Simple bubble").toBe("simple");
+    expect(first.className).toContain(SIMPLE_BOT_BUBBLE);
   });
 
   it("puts connecting an AI first when none works, and leaves out a phone already paired", async () => {
