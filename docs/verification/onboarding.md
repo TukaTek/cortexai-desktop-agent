@@ -1,10 +1,11 @@
 # Welcome flow and guided tour
 
-The first run is short (Oct 23 2026): the greeting (a name only; the email is
-asked once, by the separate product-updates question), Connect an AI when none works, then only the import, microphone and
-Cloud steps this computer needs, and the chat. There is no feature reel, phone
-step or first-bot step, and the app tour starts only from Settings → Replay
-app tour.
+The first run is two screens, then the chat (Oct 27 2026): "Meet OpenMausBot"
+(a composer typing a few asks, Next, and Connect an AI on the same screen when
+none works), then "Introducing your Chief of Staff" over the app (Create Chief
+of Staff, or Choose an existing bot). It lands in the Chief's chat, where
+MausBot's first messages and its look around offer only what is still missing.
+The app tour starts only from Settings → Replay app tour.
 
 Launch the isolated full-app fixture following [Chat UI](chat-ui.md):
 
@@ -169,3 +170,14 @@ in a browser of the same size. `verify-onboarding-ui.ts` passed end to end on a 
 Connect an AI; the engines step's refresh failure is covered by
 `src/components/onboarding/beats/EnginesBeat.test.ts`, and the steps after it by
 `src/components/onboarding/WelcomeFlow.steps.test.ts`.
+
+## Two screens, then the chat (Oct 27 2026)
+
+`scripts/verify-onboarding-ui.ts` now walks the two screens: no field, steps,
+Back or Skip on the first; a reload on the second comes back to it; Create
+lands in the Chief's chat with its first messages even when the completion save
+fails; the saved record carries `met-chief-v1`, which keeps that first
+conversation free of corner notices and spotlights until the person has had a
+reply. Before and after screenshots are in `evidence/onboarding/`. The no-AI
+first screen is shot in `onboarding-preview.html?ai=0`, since the fixture's
+fake engine always reports a signed-in account.

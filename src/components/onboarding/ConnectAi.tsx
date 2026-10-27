@@ -7,8 +7,7 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { aiChoices, organisationSignIn, plainSignIn } from "@/lib/onboarding";
 import { api, useStore, type InstanceInfo } from "@/state/store";
-import { OrganisationRow } from "./OrganisationRow";
-import { PrimaryButton, staggerIndex, type BeatProps } from "./shared";
+import { OrganisationRow } from "./beats/OrganisationRow";
 
 /** A local-model setup and a step finished in Terminal keep their own words; every other sign-in says the same plain line
  * instead of the setup's technical one. */
@@ -26,30 +25,22 @@ function OtherWay({ instance, open, onToggle }: { instance: InstanceInfo; open: 
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-raised/40"
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-ink/[0.04] focus-visible:outline-offset-[-2px]"
       >
         <span className="flex size-[18px] shrink-0 items-center justify-center">
           <InstanceProviderMark instance={instance} size={18} />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{instance.displayName}</span>
+        <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{instance.displayName}</span>
         <ChevronDown size={14} className={cn("shrink-0 text-ink-secondary transition-transform duration-200", open && "rotate-180")} />
       </button>
-      {open && <EngineSetup instance={instance} {...setupFor(instance)} className="mx-3.5 mb-3.5 border-0 bg-inset" />}
+      {open && <EngineSetup instance={instance} {...setupFor(instance)} className="mx-4 mb-3.5 border-0 bg-inset" />}
     </div>
   );
 }
 
-/** Shown only when no AI works yet: the one recommended way to connect one, every other way folded under it. */
-export function EnginesBeat({
-  onNext,
-  setMascot,
-  bump,
-  hosted = false,
-  onOpenOrganisation,
-}: BeatProps & {
-  hosted?: boolean;
-  onOpenOrganisation?: () => void;
-}) {
+/** The first screen's one required action when no AI works yet: the recommended way to connect one, every other way
+ * folded under it. */
+export function ConnectAi({ hosted = false }: { hosted?: boolean }) {
   const { state, dispatch } = useStore();
   const organisation = organisationSignIn(window.ogb, { hosted });
   const [failed, setFailed] = useState(false);
@@ -83,55 +74,41 @@ export function EnginesBeat({
   const connected = state.instances.find(engineReady);
   const { recommended, others } = aiChoices(state.instances.filter((instance) => instance.install && !engineReady(instance)));
 
-  useEffect(() => {
-    if (connected) {
-      setMascot("proud");
-      bump("success");
-    } else setMascot("curious");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(connected)]);
-
   return (
-    <div className="flex min-h-0 flex-col">
-      <p className="animate-rise mt-1 text-[14px] text-ink-secondary">{t("onboarding.engines.intro")}</p>
+    <section aria-labelledby="connect-ai-title" className="flex w-full flex-col items-center">
+      <h2 id="connect-ai-title" className="text-center text-[15px] text-ink-secondary">{t("onboarding.meet.connect")}</h2>
 
       {connected ? (
-        <p role="status" data-ai-connected className="animate-rise mt-4 flex items-center gap-2 text-[13px] text-success">
-          <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+        <p role="status" data-ai-connected className="animate-rise mt-3 flex items-center gap-2 text-[14px] text-success">
+          <Check size={15} strokeWidth={2.5} aria-hidden="true" />
           {t("onboarding.engines.connected", { name: connected.displayName })}
         </p>
       ) : recommended ? (
-        <div data-ai-recommended={recommended.instanceId} className="animate-rise mt-4 rounded-xl border border-hairline/40 bg-card" style={staggerIndex(1)}>
-          <div className="flex items-center gap-3 px-3.5 pt-3">
-            <span className="flex size-[18px] shrink-0 items-center justify-center">
-              <InstanceProviderMark instance={recommended} size={18} />
-            </span>
-            <span className="truncate text-[14px] font-medium text-ink">{recommended.displayName}</span>
-          </div>
-          <EngineSetup instance={recommended} {...setupFor(recommended)} className="mx-3.5 mb-3.5 border-0 bg-transparent" />
+        <div data-ai-recommended={recommended.instanceId} className="animate-rise mt-3 w-full rounded-2xl bg-card p-4 text-left">
+          <EngineSetup instance={recommended} {...setupFor(recommended)} className="border-0 bg-transparent p-0" />
         </div>
       ) : !failed ? (
-        <p className="mt-4 text-[13px] text-ink-secondary" aria-live="polite">{t("common.checking")}</p>
+        <p className="mt-3 text-[13px] text-ink-secondary" aria-live="polite">{t("common.checking")}</p>
       ) : null}
       {failed && <p role="alert" className="mt-2 text-[13px] text-danger">{t("onboarding.engines.error")}</p>}
 
-      {(organisation || others.length > 0) && (
-        <div className="animate-rise mt-3 min-h-0 overflow-y-auto rounded-xl border border-hairline/40 bg-card [scrollbar-width:thin]" style={staggerIndex(2)}>
+      {!connected && (organisation || others.length > 0) && (
+        <div className="mt-2 flex w-full flex-col items-center">
           <button
             type="button"
             onClick={() => setMore((value) => !value)}
             aria-expanded={more}
-            className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left text-[13px] text-ink-secondary transition-colors hover:bg-raised/40 hover:text-ink"
+            className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-ink-secondary transition-colors hover:text-ink"
           >
             {t("onboarding.engines.otherWays")}
-            <ChevronDown size={14} className={cn("shrink-0 transition-transform duration-200", more && "rotate-180")} />
+            <ChevronDown size={14} aria-hidden="true" className={cn("shrink-0 transition-transform duration-200", more && "rotate-180")} />
           </button>
           {more && (
-            <div className="divide-y divide-hairline/40 border-t border-hairline/40">
+            <div className="animate-rise mt-1 w-full divide-y divide-hairline/40 overflow-hidden rounded-2xl bg-card text-left">
               {organisation && (
                 <OrganisationRow
                   bridge={organisation}
-                  onOpenSettings={() => (onOpenOrganisation ? onOpenOrganisation() : dispatch({ type: "toggleAppSettings", open: true, section: "organization" }))}
+                  onOpenSettings={() => dispatch({ type: "toggleAppSettings", open: true, section: "organization" })}
                   onConnected={() => void refresh()}
                 />
               )}
@@ -143,7 +120,7 @@ export function EnginesBeat({
                 type="button"
                 onClick={() => void refresh()}
                 disabled={checking}
-                className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left text-[12px] text-ink-secondary transition-colors hover:bg-raised/40 hover:text-ink disabled:opacity-50"
+                className="flex w-full items-center gap-1.5 px-4 py-2.5 text-left text-[12px] text-ink-secondary transition-colors hover:bg-ink/[0.04] hover:text-ink focus-visible:outline-offset-[-2px] disabled:opacity-50"
               >
                 <RefreshCw size={12} className={checking ? "animate-spin" : ""} />
                 {checking ? t("common.checking") : t("common.checkAgain")}
@@ -152,10 +129,6 @@ export function EnginesBeat({
           )}
         </div>
       )}
-
-      <PrimaryButton onClick={onNext} className="mt-5">
-        {t("onboarding.continue")}
-      </PrimaryButton>
-    </div>
+    </section>
   );
 }
