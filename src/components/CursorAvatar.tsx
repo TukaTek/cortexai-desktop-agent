@@ -47,7 +47,7 @@ export const DEFAULT_SILHOUETTE: CursorSilhouette = cursorSilhouette;
 
 export const DEFAULT_GRADIENT: [string, string, string] = ["#9FE6B5","#3FAE6E","#1C7A4C"]
 
-const VIEW_BOX = `-15 -15 ${VIEW_SPAN} ${VIEW_SPAN}`
+export const VIEW_BOX = `-15 -15 ${VIEW_SPAN} ${VIEW_SPAN}`
 const SPHERE_C = 114.2705
 const SPHERE_R = 105
 

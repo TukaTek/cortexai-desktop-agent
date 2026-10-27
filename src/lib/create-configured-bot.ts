@@ -30,11 +30,15 @@ export async function createConfiguredBot(
   const { chiefOfStaff, managedSections, toolScope, ...profile } = template.profile;
   if (!profile.name?.trim()) throw new Error("Give the bot a name");
   const preset = draft.preset;
+  const settings = {
+    ...(profile.color ? { color: profile.color } : {}), ...(profile.mascotBody ? { mascotBody: profile.mascotBody } : {}),
+    ...(Object.hasOwn(template.profile, "toolScope") ? { toolScope } : {}),
+  };
   const response = await request<{ bot: Bot }>("/api/bots", {
     method: "POST", body: JSON.stringify({ name: profile.name, title: profile.title,
       description: profile.description, modelSelection: profile.modelSelection, section: profile.section,
       requireAvailableModel: true, useDefaults: false, ...(visibility !== undefined ? { visibility } : {}), ...(reportsTo ? { reportsTo } : {}),
-      ...(Object.hasOwn(template.profile, "toolScope") ? { settings: { toolScope } } : {}),
+      ...(Object.keys(settings).length ? { settings } : {}),
       ...(preset ? { preset: preset.id } : {}) }),
   });
   let bot = response.bot;

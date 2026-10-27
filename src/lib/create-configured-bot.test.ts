@@ -54,6 +54,16 @@ describe("configured bot creation", () => {
     expect(f.bodies[1]).not.toHaveProperty("toolScope");
   });
 
+  it("creates a bot already in its chosen look, and asks for no look when none was chosen", async () => {
+    const chosen = fixture("ask");
+    chosen.draft.patch({ color: "purple", mascotBody: "star" });
+    await createConfiguredBot(chosen.draft, chosen.request, persistBotUpdate, chosen.approvals);
+    expect(chosen.bodies[0]).toMatchObject({ settings: { color: "purple", mascotBody: "star" } });
+    const plain = fixture("ask");
+    await createConfiguredBot(plain.draft, plain.request, persistBotUpdate, plain.approvals);
+    expect(plain.bodies[0]).not.toHaveProperty("settings");
+  });
+
   it("keeps the server-completed workspace effort when applying draft settings", async () => {
     const selection = { instanceId: "claude", model: "sonnet", effort: "high" as const };
     const f = fixture("ask", 0, selection);

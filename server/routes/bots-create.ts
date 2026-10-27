@@ -183,7 +183,7 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
       // Checked again beside the synchronous write: an await above let another request take the same id.
       if (kept.id && "error" in keptBotIds(kept, store)) return json(res, 409, { error: "a bot with this id already exists here" });
       const bot = store.createBot({ ...profile.patch, soul: settings.soul, section, modelSelection: selection,
-        toolScope: settings.toolScope ?? undefined,
+        toolScope: settings.toolScope ?? undefined, color: settings.color, mascotBody: settings.mascotBody,
         ...(deps.team && creator ? { createdBy: creator } : {}), ...(reportsTo ? { reportsTo } : {}),
         ...(created?.ok ? { visibility: created.visibility } : {}) }, kept.id ? { ...kept, seedMessages: false } : {});
       const createdRoutines: Array<{ id: string; enabled: boolean }> = [];

@@ -1,10 +1,12 @@
 import { byLanguage } from "./language.ts";
 
+type Greeting = (name: string, person?: string) => string;
+
 /** The first bot's seeded line is created by the server before the UI exists. */
-const GREETINGS: { en: (name: string) => string } & Record<string, (name: string) => string> = {
-  en: (name) => `Hi, I'm ${name}. What would you like me to do?`,
-  es: (name) => `Hola, soy ${name}. ¿Qué te gustaría que hiciera?`,
-  "pt-br": (name) => `Oi, eu sou ${name}. O que você gostaria que eu fizesse?`,
+const GREETINGS: { en: Greeting } & Record<string, Greeting> = {
+  en: (name, person) => `Hi${person ? ` ${person}` : ""}, I'm ${name}. What would you like me to do?`,
+  es: (name, person) => `Hola${person ? ` ${person}` : ""}, soy ${name}. ¿Qué te gustaría que hiciera?`,
+  "pt-br": (name, person) => `Oi${person ? ` ${person}` : ""}, eu sou ${name}. O que você gostaria que eu fizesse?`,
 };
 
 /** What the bot says the moment Set me up is pressed: no model is asked, so it is written here. */
@@ -14,8 +16,9 @@ const SETUP_REQUEST_LINES: { en: string } & Record<string, string> = {
   "pt-br": "Ótimo. Me conte com suas palavras em que você gostaria de ajuda e eu me preparo para isso. Por exemplo: \"organize minha caixa de entrada toda manhã\" ou \"pesquise nossos concorrentes toda semana\".",
 };
 
-export function initialGreeting(name: string, language?: string): string {
-  return byLanguage(GREETINGS, language)(name);
+/** `person`: the name the person gave, greeted by its first word; absent or blank, the greeting names no one. */
+export function initialGreeting(name: string, language?: string, person?: string): string {
+  return byLanguage(GREETINGS, language)(name, person?.trim().split(/\s+/)[0] || undefined);
 }
 
 export function setupRequestLine(language?: string): string {
@@ -24,7 +27,7 @@ export function setupRequestLine(language?: string): string {
 
 /** The seeded message; a function language is read now, so a language changed in Settings reaches the next new bot.
  * `offerSetup`: the bot has no role or instructions yet, so its greeting carries Set me up. */
-export function initialGreetingMessage(name: string, language: string | (() => string), offerSetup = false) {
-  const text = initialGreeting(name, typeof language === "function" ? language() : language);
+export function initialGreetingMessage(name: string, language: string | (() => string), offerSetup = false, person?: string) {
+  const text = initialGreeting(name, typeof language === "function" ? language() : language, person);
   return { role: "bot", kind: "text", text, ...(offerSetup ? { setupOffer: true as const } : {}) } as const;
 }

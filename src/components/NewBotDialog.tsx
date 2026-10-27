@@ -36,6 +36,7 @@ import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
 import { SharePresetDialog } from "./SharePresetDialog";
 import { SettingRow } from "./SettingsPrimitives";
 import { Select } from "./Select";
+import { QuickNewBot, freshLook, type QuickBotChoice } from "./QuickNewBot";
 
 const SECTIONS = ["Identity", "Soul", "Skills", "Memory", "Routines", "Access", "Model", "Permissions", "Voice & alerts"] as const;
 type Section = typeof SECTIONS[number];
@@ -105,14 +106,24 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
   const [chosenOwner, setChosenOwner] = useState<string | null>(null);
   const ownerOrAdmin = useOwnerOrAdmin();
   const showThreads = useShowThreads();
-  const sections = useAdvancedMode() ? SECTIONS : SECTIONS.filter((section) => section !== "Model");
+  const advanced = useAdvancedMode();
+  const sections = advanced ? SECTIONS : SECTIONS.filter((section) => section !== "Model");
   const choosesVisibility = !defaultsMode && typeof window !== "undefined" && !window.ogb && ownerOrAdmin === true;
+  const [quick, setQuick] = useState(() => !advanced && !defaultsMode);
+  const [choice, setChoice] = useState<QuickBotChoice>(() => {
+    const template = readyBotId ? readyBot(readyBotId) : undefined;
+    return { name: template?.name ?? "", ...(template?.look ?? freshLook(parent.state.bots)) };
+  });
+  const lookChosen = useRef(Boolean(readyBotId));
+  const [queued, setQueued] = useState(false);
+  const handedOver = useRef<QuickBotChoice | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(() => {});
   closeRef.current = () => {
     if (onClose) onClose();
     else parent.dispatch({ type: "toggleNewBot", open: false });
   };
+  const focusStart = () => (dialog.current?.querySelector<HTMLElement>("[data-autofocus]") ?? dialog.current)?.focus();
   useEffect(() => {
     let cancelled = false;
     void api<{ defaults: NewBotDefaults; modelSelection: ModelSelection; suggestedName: string }>("/api/bot-defaults")
@@ -128,18 +139,21 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
         const ready = defaultsMode || !readyBotId ? undefined : readyBot(readyBotId);
         const next = new BotCreationDraft(ready ? readyBotTemplate(defaults, ready) : defaults, () => render(value => value + 1));
         if (ready) next.role = ready.id;
+        const { color, mascotBody } = defaults.profile;
+        if (!lookChosen.current && (color || mascotBody)) setChoice(current => ({ ...current, ...(color ? { color } : {}), ...(mascotBody ? { mascotBody } : {}) }));
+        if (handedOver.current) next.patch(quickPatch(handedOver.current));
         setDraft(next);
         setReady(true);
-      }).catch(cause => { if (!cancelled) setError(String(cause)); });
+      }).catch(cause => { if (!cancelled) { setQueued(false); setError(String(cause)); } });
     return () => { cancelled = true; };
   }, [defaultsMode, section, readyBotId]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => () => draft.dispose(), [draft]);
   // Disabling the focused Create button drops focus to the page in Chromium.
-  useEffect(() => { if (saving) dialog.current?.focus(); }, [saving]);
+  useEffect(() => { if (saving) focusStart(); }, [saving]);
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialog.current?.focus();
+    focusStart();
     const onKey = (event: KeyboardEvent) => {
       const root = dialog.current;
       if (!root || (event.target instanceof Node && !root.contains(event.target))) return;
@@ -157,6 +171,27 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); if (previous?.isConnected) previous.focus(); };
   }, []);
+  useEffect(() => { if (!quick) dialog.current?.focus(); }, [quick]);
+  useEffect(() => {
+    if (!ready || !queued) return;
+    setQueued(false);
+    void save();
+  }, [ready, queued]);
+  const changeChoice = (next: QuickBotChoice, picked: "name" | "look") => {
+    if (picked === "look") lookChosen.current = true;
+    setChoice(next);
+  };
+  const createQuick = (value: QuickBotChoice) => {
+    handedOver.current = value;
+    if (!ready) { setQueued(true); return; }
+    draft.patch(quickPatch(value));
+    void save();
+  };
+  const moreOptions = (value: QuickBotChoice) => {
+    handedOver.current = value;
+    if (ready) draft.patch(quickPatch(value));
+    setQuick(false);
+  };
   const save = async () => {
     if (!ready || savingRef.current || parent.state.botCreationPending) return;
     if (!defaultsMode && draft.bot.approvalMode === "auto" && draft.bot.computer === "local" && !draft.consent.acknowledgeLocalAuto) { setWarning("local"); return; }
@@ -199,10 +234,15 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
       else parent.dispatch(action);
     },
   };
-  const title = defaultsMode ? t("newBot.defaults") : t("sidebar.newBot");
+  const title = defaultsMode ? t("newBot.defaults") : quick ? t("newBot.quick.title") : t("sidebar.newBot");
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3 sm:p-5" hidden={!defaultsMode && parent.state.appSettingsOpen}>
-    <div ref={dialog} role="dialog" aria-modal="true" aria-label={title} aria-busy={saving} tabIndex={-1}
-      className="flex h-[min(760px,94dvh)] w-full max-w-[900px] flex-col overflow-hidden rounded-2xl border border-hairline/50 bg-panel shadow-2xl outline-none">
+    <div ref={dialog} role="dialog" aria-modal="true" aria-label={title} aria-busy={saving || queued} tabIndex={-1}
+      className={quick
+        ? "animate-pop-in flex max-h-full w-full max-w-[440px] flex-col overflow-hidden rounded-[14px] border-[0.5px] border-hairline bg-menu shadow-2xl outline-none"
+        : "flex h-[min(760px,94dvh)] w-full max-w-[900px] flex-col overflow-hidden rounded-2xl border border-hairline/50 bg-panel shadow-2xl outline-none"}>
+      {quick ? <QuickNewBot value={choice} onChange={changeChoice} takenNames={parent.state.bots.map(existing => existing.name)}
+        busy={saving || queued} canCreate={ready || !error} error={error} note={team && teamName ? <SharedInTeam team={teamName} compact /> : undefined}
+        onCancel={() => closeRef.current()} onCreate={createQuick} onMore={moreOptions} /> : <>
       <div className="flex shrink-0 items-center justify-between border-b border-hairline/40 px-5 py-4">
         <h2 className="text-[17px] font-semibold text-ink">{title}</h2>
         <button type="button" onClick={() => closeRef.current()} aria-label={t("common.close")}
@@ -258,6 +298,7 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
           {saving && <Loader2 size={15} className="animate-spin" />}{t(defaultsMode ? "newBot.saveDefaults" : "newBot.create")}
         </button>
       </div>
+      </>}
       <LocalComputerAutoWarning open={warning === "local"} onCancel={() => setWarning(null)} onConfirm={() => { draft.consent.acknowledgeLocalAuto = true; setWarning(null); void save(); }} />
     </div>
   </div>;
@@ -271,9 +312,15 @@ function reportsToFor(chosen: string | null, section: string | undefined, bots: 
   return departmentOwner(department, team)?.email ?? team.me?.email ?? null;
 }
 
-function SharedInTeam({ team }: { team: string }) {
+function quickPatch({ name, color, mascotBody }: QuickBotChoice) {
+  return { ...(name.trim() ? { name: name.trim() } : {}), color, mascotBody };
+}
+
+function SharedInTeam({ team, compact = false }: { team: string; compact?: boolean }) {
   const bridge = typeof window === "undefined" ? undefined : window.ogb?.workspaces;
-  return <div data-new-bot-shared className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline/40 bg-raised/30 px-5 py-2.5 text-[13px] text-ink-secondary">
+  return <div data-new-bot-shared className={compact
+    ? "mt-2 flex flex-wrap items-center justify-center gap-x-1.5 text-center text-[13px] text-ink-secondary"
+    : "flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline/40 bg-raised/30 px-5 py-2.5 text-[13px] text-ink-secondary"}>
     <span>{t("newBot.sharedWith", { team })}</span>
     {bridge
       ? <button type="button" onClick={() => void openServerMenu(bridge).catch(() => {})} className="font-medium text-accent hover:underline">{t("newBot.justForYou")}</button>

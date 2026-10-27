@@ -151,15 +151,25 @@ describe("bot draft dialog", () => {
     for (const section of ["Identity", "Soul", "Skills", "Memory", "Routines", "Access", "Model", "Permissions", "Voice &amp; alerts"]) {
       expect(result.html).toContain(section);
     }
-    fixture.advanced = false;
-    const simple = render().html;
-    expect(simple, "Simple mode picks no model: new bots use the default").not.toContain(">Model<");
-    expect(simple).toContain(">Permissions<");
     fixture.effects[0]();
     expect(fixture.api).toHaveBeenCalledExactlyOnceWith("/api/bot-defaults");
     expect(fixture.dispatch).not.toHaveBeenCalled();
     const submit = result.nodes.find(node => node.type === "button" && node.props.disabled)!;
     expect(submit.props.disabled).toBe(true);
+  });
+
+  it("in Simple mode opens the one-step dialog: a name, a shape and a color, with no sections", () => {
+    fixture.advanced = false;
+    const simple = render().html;
+    expect(simple).toContain('aria-label="Create a bot"');
+    expect(simple).toContain('placeholder="Name your bot"');
+    expect(simple.match(/role="radio"/g)).toHaveLength(10 + 12);
+    for (const section of [">Identity<", ">Soul<", ">Model<", ">Permissions<"]) expect(simple).not.toContain(section);
+    expect(simple).toContain(">More options<");
+    fixture.effects[0]();
+    expect(fixture.api).toHaveBeenCalledExactlyOnceWith("/api/bot-defaults");
+    expect(fixture.dispatch).not.toHaveBeenCalled();
+    expect(render(true).html, "the defaults for new bots keep their full editor").toContain(">Identity<");
   });
 
   it.each([undefined, null, { instanceId: "", model: "" }])("fills an unselected saved default from the available model (%j)", async selection => {

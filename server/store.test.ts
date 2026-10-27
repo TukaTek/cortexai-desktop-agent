@@ -549,6 +549,16 @@ describe("Store", () => {
     expect(store.messagesFor(bot.threadId)[0]?.text).toBe(`Oi, eu sou ${bot.name}. O que você gostaria que eu fizesse?`);
   });
 
+  it("greets the person by the first name they have given by the time the bot is created", () => {
+    let person: string | undefined;
+    const store = new Store(selection, undefined, undefined, "en", () => person);
+    const greeting = (name: string) => store.messagesFor(store.createBot({ name }).threadId)[0]?.text;
+
+    expect(greeting("Ivy")).toBe("Hi, I'm Ivy. What would you like me to do?");
+    person = "Milind Soni";
+    expect(greeting("Scout")).toBe("Hi Milind, I'm Scout. What would you like me to do?");
+  });
+
   it("clears provider-owned voice ids as one durable mutation", () => {
     const store = new Store(selection);
     const first = store.createBot();
