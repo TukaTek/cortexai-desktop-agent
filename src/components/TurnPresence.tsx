@@ -57,7 +57,8 @@ const Dot = () => <span aria-hidden="true" className="text-[12px] text-ink-terti
 
 /** The turn's live status line: "Working · 1m 12s · Writing index.html · 14 KB". The lead word and the timer stay for
  * the whole turn; `phrases` say what is happening now and rotate through their alternates; `size` is how much of the
- * file is written. With nothing to say the line is the lead and the timer alone. The part that is live shimmers. */
+ * file is written. With nothing to say the line is the lead and the timer alone. The part that is live shimmers.
+ * `simple` draws Simple mode's quiet line instead: the avatar and one friendly phrase for what is happening now. */
 export function TurnPresence({
   avatar,
   visible,
@@ -68,6 +69,8 @@ export function TurnPresence({
   answering = false,
   since = null,
   size,
+  simple = false,
+  className,
 }: {
   avatar: ReactNode;
   visible: boolean;
@@ -78,6 +81,8 @@ export function TurnPresence({
   answering?: boolean;
   since?: number | null;
   size?: string;
+  simple?: boolean;
+  className?: string;
 }) {
   const [mounted, setMounted] = useState(visible);
   const [presencePhase, setPhase] = useState<"think" | "answer" | "out">(answering ? "answer" : "think");
@@ -108,7 +113,7 @@ export function TurnPresence({
   const { current, previous } = useRotatingPhrase(now ?? NOTHING, phase ?? now?.[0] ?? "", seed, mounted && showWorking && now !== null);
   if (!mounted) return null;
   return (
-    <div className="turn-presence flex flex-col items-start">
+    <div className={cn("turn-presence flex flex-col items-start", simple && "ps-0.5", className)}>
       <div
         className={cn(
           "flex items-center gap-2",
@@ -117,7 +122,20 @@ export function TurnPresence({
         )}
       >
         {avatar}
-        {showWorking ? (
+        {showWorking && simple ? (
+          <span className="turn-phrase relative grid text-[14px] leading-[22px]" data-turn-status data-turn-now={now ? "" : undefined}>
+            {now ? (
+              <>
+                {previous && previous !== current && (
+                  <ShimmerPhrase key={`out:${previous}`} text={previous} className="turn-phrase-out absolute start-0 top-0 whitespace-nowrap" hidden />
+                )}
+                <ShimmerPhrase key={`in:${current}`} text={current} className={previous !== null ? "turn-phrase-in" : undefined} />
+              </>
+            ) : (
+              <span className="text-ink-secondary">{label ?? t("chat.typing")}</span>
+            )}
+          </span>
+        ) : showWorking ? (
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1 leading-none" data-turn-status>
             {now ? <span className="text-[13px] text-ink-secondary">{lead}</span> : <ShimmerPhrase text={lead} className="text-[13px]" />}
             {since !== null && (
